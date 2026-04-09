@@ -75,6 +75,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Get("/", handler.ServeIndex)
 	r.Post("/api/subscribe", handler.Subscribe)
 	r.Get("/api/confirm/{token}", handler.Confirm)
 	r.Get("/api/unsubscribe/{token}", handler.Unsubscribe)
