@@ -2,12 +2,17 @@
 package subscription
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
+
 	"github.com/go-chi/chi/v5"
 )
+
+//go:embed static/index.html
+var indexHTML []byte
 
 // Handler exposes the subscription service over HTTP.
 type Handler struct {
@@ -103,6 +108,13 @@ func (h *Handler) Unsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, msgResponse{"Unsubscribed successfully."})
+}
+
+// ServeIndex handles GET / — serves the HTML subscription page.
+func (h *Handler) ServeIndex(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(indexHTML)
 }
 
 // ListSubscriptions handles GET /api/subscriptions?email=...
