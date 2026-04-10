@@ -12,16 +12,20 @@ type Notifier interface {
 	SendRelease(to, repo, tagName, releaseURL, unsubURL string) error
 }
 
-// SMTPNotifier sends emails via a plain SMTP server (no TLS auth — suitable for MailHog).
+// SMTPNotifier sends emails via SMTP. When user and pass are empty,
+// connects without authentication (suitable for MailHog in development).
 type SMTPNotifier struct {
 	host string
 	port string
 	from string
+	user string
+	pass string
 }
 
 // NewSMTPNotifier creates a new SMTP-based notifier.
-func NewSMTPNotifier(host, port, from string) *SMTPNotifier {
-	return &SMTPNotifier{host: host, port: port, from: from}
+// Pass empty user and pass for unauthenticated servers (e.g. MailHog).
+func NewSMTPNotifier(host, port, from, user, pass string) *SMTPNotifier {
+	return &SMTPNotifier{host: host, port: port, from: from, user: user, pass: pass}
 }
 
 // SendConfirmation sends an email asking the user to confirm their subscription.
@@ -67,5 +71,9 @@ func (n *SMTPNotifier) send(to, subject, body string) error {
 			"\r\n" +
 			body + "\r\n",
 	)
-	return smtp.SendMail(addr, nil, n.from, []string{to}, msg)
+	var auth smtp.Auth
+	if n.user != "" {
+		auth = smtp.PlainAuth("", n.user, n.pass, n.host)
+	}
+	return smtp.SendMail(addr, auth, n.from, []string{to}, msg)
 }

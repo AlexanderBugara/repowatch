@@ -13,6 +13,8 @@ type Config struct {
 	SMTPHost     string
 	SMTPPort     string
 	SMTPFrom     string
+	SMTPUser     string
+	SMTPPass     string
 	GitHubToken  string
 	ScanInterval time.Duration
 }
@@ -30,6 +32,8 @@ func Load() *Config {
 		SMTPHost:     getEnv("SMTP_HOST", "localhost"),
 		SMTPPort:     getEnv("SMTP_PORT", "1025"),
 		SMTPFrom:     getEnv("SMTP_FROM", "noreply@genesis.app"),
+		SMTPUser:     getEnv("SMTP_USER", ""),
+		SMTPPass:     getEnv("SMTP_PASS", ""),
 		GitHubToken:  getEnv("GITHUB_TOKEN", ""),
 		ScanInterval: interval,
 	}
