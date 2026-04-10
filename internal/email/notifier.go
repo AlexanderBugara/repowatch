@@ -2,7 +2,10 @@
 package email
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/smtp"
 )
 
@@ -40,6 +43,76 @@ func (n *SMTPNotifier) SendRelease(to, repo, tagName, releaseURL, unsubURL strin
 	return n.send(to, subject, BuildReleaseBody(repo, tagName, releaseURL, unsubURL))
 }
 
+func (n *SMTPNotifier) send(to, subject, body string) error {
+	addr := n.host + ":" + n.port
+	msg := []byte(
+		"From: " + n.from + "\r\n" +
+			"To: " + to + "\r\n" +
+			"Subject: " + subject + "\r\n" +
+			"Content-Type: text/plain; charset=UTF-8\r\n" +
+			"\r\n" +
+			body + "\r\n",
+	)
+	var auth smtp.Auth
+	if n.user != "" {
+		auth = smtp.PlainAuth("", n.user, n.pass, n.host)
+	}
+	return smtp.SendMail(addr, auth, n.from, []string{to}, msg)
+}
+
+// BrevoNotifier sends emails via Brevo HTTP API.
+type BrevoNotifier struct {
+	apiKey string
+	from   string
+}
+
+// NewBrevoNotifier creates a Brevo HTTP API notifier.
+func NewBrevoNotifier(apiKey, from string) *BrevoNotifier {
+	return &BrevoNotifier{apiKey: apiKey, from: from}
+}
+
+// SendConfirmation sends an email asking the user to confirm their subscription.
+func (n *BrevoNotifier) SendConfirmation(to, repo, confirmURL string) error {
+	subject := fmt.Sprintf("Confirm your subscription to %s releases", repo)
+	return n.send(to, subject, BuildConfirmationBody(repo, confirmURL))
+}
+
+// SendRelease sends a new-release notification email.
+func (n *BrevoNotifier) SendRelease(to, repo, tagName, releaseURL, unsubURL string) error {
+	subject := fmt.Sprintf("New release: %s %s", repo, tagName)
+	return n.send(to, subject, BuildReleaseBody(repo, tagName, releaseURL, unsubURL))
+}
+
+func (n *BrevoNotifier) send(to, subject, body string) error {
+	payload := map[string]any{
+		"sender":      map[string]string{"email": n.from},
+		"to":          []map[string]string{{"email": to}},
+		"subject":     subject,
+		"textContent": body,
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPost, "https://api.brevo.com/v3/smtp/email", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("api-key", n.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("brevo api returned status %d", resp.StatusCode)
+	}
+	return nil
+}
+
 // BuildConfirmationBody constructs the plain-text body for a confirmation email.
 func BuildConfirmationBody(repo, confirmURL string) string {
 	return fmt.Sprintf(
@@ -59,21 +132,4 @@ func BuildReleaseBody(repo, tagName, releaseURL, unsubURL string) string {
 			"To unsubscribe from these notifications:\n%s",
 		repo, tagName, releaseURL, unsubURL,
 	)
-}
-
-func (n *SMTPNotifier) send(to, subject, body string) error {
-	addr := n.host + ":" + n.port
-	msg := []byte(
-		"From: " + n.from + "\r\n" +
-			"To: " + to + "\r\n" +
-			"Subject: " + subject + "\r\n" +
-			"Content-Type: text/plain; charset=UTF-8\r\n" +
-			"\r\n" +
-			body + "\r\n",
-	)
-	var auth smtp.Auth
-	if n.user != "" {
-		auth = smtp.PlainAuth("", n.user, n.pass, n.host)
-	}
-	return smtp.SendMail(addr, auth, n.from, []string{to}, msg)
 }

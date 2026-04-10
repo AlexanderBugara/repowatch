@@ -64,7 +64,12 @@ func main() {
 	}
 
 	// Build components.
-	notifier := email.NewSMTPNotifier(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom, cfg.SMTPUser, cfg.SMTPPass)
+	var notifier email.Notifier
+	if cfg.BrevoAPIKey != "" {
+		notifier = email.NewBrevoNotifier(cfg.BrevoAPIKey, cfg.SMTPFrom)
+	} else {
+		notifier = email.NewSMTPNotifier(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom, cfg.SMTPUser, cfg.SMTPPass)
+	}
 	githubClient := release.NewGitHubClient(cfg.GitHubToken, "")
 	repo := subscription.NewPostgresRepository(pool)
 	svc := subscription.NewService(repo, githubClient, notifier, cfg.Host)

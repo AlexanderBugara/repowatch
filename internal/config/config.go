@@ -15,6 +15,7 @@ type Config struct {
 	SMTPFrom     string
 	SMTPUser     string
 	SMTPPass     string
+	BrevoAPIKey  string
 	GitHubToken  string
 	ScanInterval time.Duration
 }
@@ -34,6 +35,7 @@ func Load() *Config {
 		SMTPFrom:     getEnv("SMTP_FROM", "noreply@genesis.app"),
 		SMTPUser:     getEnv("SMTP_USER", ""),
 		SMTPPass:     getEnv("SMTP_PASS", ""),
+		BrevoAPIKey:  getEnv("BREVO_API_KEY", ""),
 		GitHubToken:  getEnv("GITHUB_TOKEN", ""),
 		ScanInterval: interval,
 	}
