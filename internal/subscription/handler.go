@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -67,6 +68,7 @@ func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrAlreadySubscribed):
 			writeJSON(w, http.StatusConflict, errResponse{err.Error()})
 		default:
+			log.Printf("subscribe error: %v", err)
 			writeJSON(w, http.StatusInternalServerError, errResponse{"internal server error"})
 		}
 		return
