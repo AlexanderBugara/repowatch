@@ -76,6 +76,7 @@ func main() {
 	handler := subscription.NewHandler(svc)
 	scanner := release.NewScanner(&repoAdapter{repo}, githubClient, notifier, cfg.Host)
 	svc.SetOnConfirm(func() { scanner.Scan(ctx) })
+	handler.SetScanTrigger(func() { scanner.Scan(ctx) })
 
 	// Register routes.
 	r := chi.NewRouter()
@@ -83,6 +84,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Get("/", handler.ServeIndex)
 	r.Post("/api/subscribe", handler.Subscribe)
+	r.Post("/api/scan", handler.TriggerScan)
 	r.Get("/api/confirm/{token}", handler.Confirm)
 	r.Get("/api/unsubscribe/{token}", handler.Unsubscribe)
 	r.Get("/api/subscriptions", handler.ListSubscriptions)

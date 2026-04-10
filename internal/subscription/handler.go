@@ -17,12 +17,18 @@ var indexHTML []byte
 
 // Handler exposes the subscription service over HTTP.
 type Handler struct {
-	svc *Service
+	svc         *Service
+	scanTrigger func()
 }
 
 // NewHandler creates a new HTTP handler wrapping the subscription service.
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
+}
+
+// SetScanTrigger registers a function called by POST /api/scan.
+func (h *Handler) SetScanTrigger(fn func()) {
+	h.scanTrigger = fn
 }
 
 type errResponse struct {
@@ -110,6 +116,14 @@ func (h *Handler) Unsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, msgResponse{"Unsubscribed successfully."})
+}
+
+// TriggerScan handles POST /api/scan — runs an immediate scan cycle.
+func (h *Handler) TriggerScan(w http.ResponseWriter, r *http.Request) {
+	if h.scanTrigger != nil {
+		go h.scanTrigger()
+	}
+	writeJSON(w, http.StatusOK, msgResponse{"Scan started."})
 }
 
 // ServeIndex handles GET / — serves the HTML subscription page.
