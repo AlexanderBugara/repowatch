@@ -92,7 +92,7 @@ func (s *Scanner) Scan(ctx context.Context) {
 			if sub.LastSeenTag != nil && *sub.LastSeenTag == rel.TagName {
 				continue
 			}
-			unsubURL := fmt.Sprintf("http://%s/api/unsubscribe/%s", s.host, sub.UnsubToken)
+			unsubURL := fmt.Sprintf("https://%s/api/unsubscribe/%s", s.host, sub.UnsubToken)
 			if err := s.notifier.SendRelease(sub.Email, repo, rel.TagName, rel.HTMLURL, unsubURL); err != nil {
 				log.Printf("scanner: send release email to %s: %v", sub.Email, err)
 				continue

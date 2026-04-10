@@ -89,7 +89,7 @@ func (s *Service) Subscribe(ctx context.Context, emailAddr, repo string) error {
 		return err
 	}
 
-	confirmURL := fmt.Sprintf("http://%s/api/confirm/%s", s.host, confirmToken)
+	confirmURL := fmt.Sprintf("https://%s/api/confirm/%s", s.host, confirmToken)
 	return s.notifier.SendConfirmation(emailAddr, repo, confirmURL)
 }
 
