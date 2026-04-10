@@ -36,15 +36,21 @@ type EmailNotifier interface {
 
 // Service implements subscription business logic.
 type Service struct {
-	repo     Repository
-	github   GitHubChecker
-	notifier EmailNotifier
-	host     string
+	repo      Repository
+	github    GitHubChecker
+	notifier  EmailNotifier
+	host      string
+	onConfirm func()
 }
 
 // NewService creates a new subscription service.
 func NewService(repo Repository, github GitHubChecker, notifier EmailNotifier, host string) *Service {
 	return &Service{repo: repo, github: github, notifier: notifier, host: host}
+}
+
+// SetOnConfirm registers a callback invoked after a subscription is confirmed.
+func (s *Service) SetOnConfirm(fn func()) {
+	s.onConfirm = fn
 }
 
 // Subscribe validates the repo, checks GitHub, creates the subscription, and sends a confirmation email.
@@ -93,7 +99,13 @@ func (s *Service) Confirm(ctx context.Context, token string) error {
 	if err != nil {
 		return err
 	}
-	return s.repo.Confirm(ctx, sub.ID)
+	if err := s.repo.Confirm(ctx, sub.ID); err != nil {
+		return err
+	}
+	if s.onConfirm != nil {
+		go s.onConfirm()
+	}
+	return nil
 }
 
 // Unsubscribe removes a subscription by its unsubscribe token.

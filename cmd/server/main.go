@@ -70,6 +70,7 @@ func main() {
 	svc := subscription.NewService(repo, githubClient, notifier, cfg.Host)
 	handler := subscription.NewHandler(svc)
 	scanner := release.NewScanner(&repoAdapter{repo}, githubClient, notifier, cfg.Host)
+	svc.SetOnConfirm(func() { scanner.Scan(ctx) })
 
 	// Register routes.
 	r := chi.NewRouter()
