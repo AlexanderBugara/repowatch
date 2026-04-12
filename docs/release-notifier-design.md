@@ -1,6 +1,4 @@
 # GitHub Release Notifier — Design Spec
-**Date:** 2026-04-07  
-**Status:** Approved
 
 ---
 

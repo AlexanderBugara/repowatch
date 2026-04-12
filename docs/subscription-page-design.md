@@ -1,6 +1,4 @@
 # Deploy to Railway + HTML Subscription Page — Design Spec
-**Date:** 2026-04-09  
-**Status:** Approved
 
 ---
 
