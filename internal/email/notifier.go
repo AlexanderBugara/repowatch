@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/smtp"
+
+	"RepoWatch/internal/metrics"
 )
 
 // Notifier sends email notifications to subscribers.
@@ -18,11 +20,12 @@ type Notifier interface {
 // SMTPNotifier sends emails via SMTP. When user and pass are empty,
 // connects without authentication (suitable for MailHog in development).
 type SMTPNotifier struct {
-	host string
-	port string
-	from string
-	user string
-	pass string
+	host    string
+	port    string
+	from    string
+	user    string
+	pass    string
+	metrics *metrics.Metrics
 }
 
 // NewSMTPNotifier creates a new SMTP-based notifier.
@@ -31,16 +34,33 @@ func NewSMTPNotifier(host, port, from, user, pass string) *SMTPNotifier {
 	return &SMTPNotifier{host: host, port: port, from: from, user: user, pass: pass}
 }
 
+// SetMetrics attaches Prometheus metrics to the notifier.
+func (n *SMTPNotifier) SetMetrics(m *metrics.Metrics) {
+	n.metrics = m
+}
+
 // SendConfirmation sends an email asking the user to confirm their subscription.
 func (n *SMTPNotifier) SendConfirmation(to, repo, confirmURL string) error {
 	subject := fmt.Sprintf("Confirm your subscription to %s releases", repo)
-	return n.send(to, subject, BuildConfirmationBody(repo, confirmURL))
+	if err := n.send(to, subject, BuildConfirmationBody(repo, confirmURL)); err != nil {
+		return err
+	}
+	if n.metrics != nil {
+		n.metrics.EmailsSentTotal.WithLabelValues("confirmation").Inc()
+	}
+	return nil
 }
 
 // SendRelease sends a new-release notification email.
 func (n *SMTPNotifier) SendRelease(to, repo, tagName, releaseURL, unsubURL string) error {
 	subject := fmt.Sprintf("New release: %s %s", repo, tagName)
-	return n.send(to, subject, BuildReleaseBody(repo, tagName, releaseURL, unsubURL))
+	if err := n.send(to, subject, BuildReleaseBody(repo, tagName, releaseURL, unsubURL)); err != nil {
+		return err
+	}
+	if n.metrics != nil {
+		n.metrics.EmailsSentTotal.WithLabelValues("release").Inc()
+	}
+	return nil
 }
 
 func (n *SMTPNotifier) send(to, subject, body string) error {
@@ -62,8 +82,9 @@ func (n *SMTPNotifier) send(to, subject, body string) error {
 
 // BrevoNotifier sends emails via Brevo HTTP API.
 type BrevoNotifier struct {
-	apiKey string
-	from   string
+	apiKey  string
+	from    string
+	metrics *metrics.Metrics
 }
 
 // NewBrevoNotifier creates a Brevo HTTP API notifier.
@@ -71,16 +92,33 @@ func NewBrevoNotifier(apiKey, from string) *BrevoNotifier {
 	return &BrevoNotifier{apiKey: apiKey, from: from}
 }
 
+// SetMetrics attaches Prometheus metrics to the notifier.
+func (n *BrevoNotifier) SetMetrics(m *metrics.Metrics) {
+	n.metrics = m
+}
+
 // SendConfirmation sends an email asking the user to confirm their subscription.
 func (n *BrevoNotifier) SendConfirmation(to, repo, confirmURL string) error {
 	subject := fmt.Sprintf("Confirm your subscription to %s releases", repo)
-	return n.send(to, subject, BuildConfirmationBody(repo, confirmURL))
+	if err := n.send(to, subject, BuildConfirmationBody(repo, confirmURL)); err != nil {
+		return err
+	}
+	if n.metrics != nil {
+		n.metrics.EmailsSentTotal.WithLabelValues("confirmation").Inc()
+	}
+	return nil
 }
 
 // SendRelease sends a new-release notification email.
 func (n *BrevoNotifier) SendRelease(to, repo, tagName, releaseURL, unsubURL string) error {
 	subject := fmt.Sprintf("New release: %s %s", repo, tagName)
-	return n.send(to, subject, BuildReleaseBody(repo, tagName, releaseURL, unsubURL))
+	if err := n.send(to, subject, BuildReleaseBody(repo, tagName, releaseURL, unsubURL)); err != nil {
+		return err
+	}
+	if n.metrics != nil {
+		n.metrics.EmailsSentTotal.WithLabelValues("release").Inc()
+	}
+	return nil
 }
 
 func (n *BrevoNotifier) send(to, subject, body string) error {

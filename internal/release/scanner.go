@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"RepoWatch/internal/email"
+	"RepoWatch/internal/metrics"
 )
 
 // SubscriptionEntry is the scanner's minimal view of a subscription row.
@@ -34,11 +35,17 @@ type Scanner struct {
 	github   GitHubClient
 	notifier email.Notifier
 	host     string
+	metrics  *metrics.Metrics
 }
 
 // NewScanner creates a release scanner.
 func NewScanner(source SubscriptionSource, github GitHubClient, notifier email.Notifier, host string) *Scanner {
 	return &Scanner{source: source, github: github, notifier: notifier, host: host}
+}
+
+// SetMetrics attaches Prometheus metrics to the scanner.
+func (s *Scanner) SetMetrics(m *metrics.Metrics) {
+	s.metrics = m
 }
 
 // Start launches the periodic scan loop. Blocks until ctx is cancelled.
@@ -57,6 +64,9 @@ func (s *Scanner) Start(ctx context.Context, interval time.Duration) {
 
 // Scan performs one full scan cycle. Exported so tests can call it directly without a ticker.
 func (s *Scanner) Scan(ctx context.Context) {
+	if s.metrics != nil {
+		s.metrics.ScanCyclesTotal.Inc()
+	}
 	entries, err := s.source.FindAllConfirmed(ctx)
 	if err != nil {
 		log.Printf("scanner: fetch subscriptions: %v", err)

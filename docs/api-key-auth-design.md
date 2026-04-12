@@ -1,6 +1,4 @@
 # API Key Authentication — Design Spec
-**Date:** 2026-04-12  
-**Status:** Approved
 
 ---
 

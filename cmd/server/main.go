@@ -12,10 +12,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"RepoWatch/db"
 	"RepoWatch/internal/config"
 	"RepoWatch/internal/email"
+	"RepoWatch/internal/metrics"
 	"RepoWatch/internal/release"
 	"RepoWatch/internal/subscription"
 )
@@ -63,23 +66,33 @@ func main() {
 		log.Fatalf("run migrations: %v", err)
 	}
 
+	// Initialise Prometheus metrics.
+	m := metrics.NewMetrics(prometheus.DefaultRegisterer)
+
 	// Build components.
 	var notifier email.Notifier
 	if cfg.BrevoAPIKey != "" {
-		notifier = email.NewBrevoNotifier(cfg.BrevoAPIKey, cfg.SMTPFrom)
+		n := email.NewBrevoNotifier(cfg.BrevoAPIKey, cfg.SMTPFrom)
+		n.SetMetrics(m)
+		notifier = n
 	} else {
-		notifier = email.NewSMTPNotifier(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom, cfg.SMTPUser, cfg.SMTPPass)
+		n := email.NewSMTPNotifier(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom, cfg.SMTPUser, cfg.SMTPPass)
+		n.SetMetrics(m)
+		notifier = n
 	}
 	githubClient := release.NewGitHubClient(cfg.GitHubToken, "")
 	repo := subscription.NewPostgresRepository(pool)
 	svc := subscription.NewService(repo, githubClient, notifier, cfg.Host)
+	svc.SetMetrics(m)
 	handler := subscription.NewHandler(svc)
 	scanner := release.NewScanner(&repoAdapter{repo}, githubClient, notifier, cfg.Host)
+	scanner.SetMetrics(m)
 	svc.SetOnConfirm(func() { scanner.Scan(ctx) })
 	handler.SetScanTrigger(func() { scanner.Scan(ctx) })
 
 	// Register routes.
 	r := chi.NewRouter()
+	r.Use(m.HTTPMiddleware)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Get("/", handler.ServeIndex)
@@ -88,6 +101,7 @@ func main() {
 	r.Get("/api/confirm/{token}", handler.Confirm)
 	r.Get("/api/unsubscribe/{token}", handler.Unsubscribe)
 	r.With(subscription.APIKeyMiddleware(cfg.APIKey)).Get("/api/subscriptions", handler.ListSubscriptions)
+	r.With(subscription.APIKeyMiddleware(cfg.APIKey)).Handle("/metrics", promhttp.Handler())
 
 	// Start the scanner in the background.
 	scanCtx, cancelScan := context.WithCancel(ctx)

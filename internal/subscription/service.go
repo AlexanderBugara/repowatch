@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"RepoWatch/internal/metrics"
 	"RepoWatch/internal/release"
 )
 
@@ -18,10 +19,10 @@ var repoPattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$`)
 
 // Service errors that handlers map to HTTP status codes.
 var (
-	ErrInvalidRepo      = errors.New("invalid repository format, expected owner/repo")
-	ErrRepoNotFound     = errors.New("repository not found on GitHub")
+	ErrInvalidRepo       = errors.New("invalid repository format, expected owner/repo")
+	ErrRepoNotFound      = errors.New("repository not found on GitHub")
 	ErrAlreadySubscribed = errors.New("subscription already exists for this email and repository")
-	ErrInvalidEmail     = errors.New("email query parameter is required")
+	ErrInvalidEmail      = errors.New("email query parameter is required")
 )
 
 // GitHubChecker is the subset of GitHub capabilities needed by the subscription service.
@@ -41,11 +42,17 @@ type Service struct {
 	notifier  EmailNotifier
 	host      string
 	onConfirm func()
+	metrics   *metrics.Metrics
 }
 
 // NewService creates a new subscription service.
 func NewService(repo Repository, github GitHubChecker, notifier EmailNotifier, host string) *Service {
 	return &Service{repo: repo, github: github, notifier: notifier, host: host}
+}
+
+// SetMetrics attaches Prometheus metrics to the service.
+func (s *Service) SetMetrics(m *metrics.Metrics) {
+	s.metrics = m
 }
 
 // SetOnConfirm registers a callback invoked after a subscription is confirmed.
@@ -89,6 +96,9 @@ func (s *Service) Subscribe(ctx context.Context, emailAddr, repo string) error {
 		return err
 	}
 
+	if s.metrics != nil {
+		s.metrics.SubscriptionsCreated.Inc()
+	}
 	confirmURL := fmt.Sprintf("https://%s/api/confirm/%s", s.host, confirmToken)
 	return s.notifier.SendConfirmation(emailAddr, repo, confirmURL)
 }
@@ -102,6 +112,9 @@ func (s *Service) Confirm(ctx context.Context, token string) error {
 	if err := s.repo.Confirm(ctx, sub.ID); err != nil {
 		return err
 	}
+	if s.metrics != nil {
+		s.metrics.SubscriptionsConfirmed.Inc()
+	}
 	if s.onConfirm != nil {
 		go s.onConfirm()
 	}
@@ -114,7 +127,13 @@ func (s *Service) Unsubscribe(ctx context.Context, token string) error {
 	if err != nil {
 		return err
 	}
-	return s.repo.Delete(ctx, sub.ID)
+	if err := s.repo.Delete(ctx, sub.ID); err != nil {
+		return err
+	}
+	if s.metrics != nil {
+		s.metrics.SubscriptionsUnsubscribed.Inc()
+	}
+	return nil
 }
 
 // ListByEmail returns all confirmed subscriptions for a given email address.
