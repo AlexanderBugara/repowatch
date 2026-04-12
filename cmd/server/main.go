@@ -84,10 +84,10 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Get("/", handler.ServeIndex)
 	r.Post("/api/subscribe", handler.Subscribe)
-	r.Post("/api/scan", handler.TriggerScan)
+	r.With(subscription.APIKeyMiddleware(cfg.APIKey)).Post("/api/scan", handler.TriggerScan)
 	r.Get("/api/confirm/{token}", handler.Confirm)
 	r.Get("/api/unsubscribe/{token}", handler.Unsubscribe)
-	r.Get("/api/subscriptions", handler.ListSubscriptions)
+	r.With(subscription.APIKeyMiddleware(cfg.APIKey)).Get("/api/subscriptions", handler.ListSubscriptions)
 
 	// Start the scanner in the background.
 	scanCtx, cancelScan := context.WithCancel(ctx)

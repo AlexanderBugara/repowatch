@@ -16,6 +16,7 @@ type Config struct {
 	SMTPUser     string
 	SMTPPass     string
 	BrevoAPIKey  string
+	APIKey       string
 	GitHubToken  string
 	ScanInterval time.Duration
 }
@@ -36,6 +37,7 @@ func Load() *Config {
 		SMTPUser:     getEnv("SMTP_USER", ""),
 		SMTPPass:     getEnv("SMTP_PASS", ""),
 		BrevoAPIKey:  getEnv("BREVO_API_KEY", ""),
+		APIKey:       getEnv("API_KEY", ""),
 		GitHubToken:  getEnv("GITHUB_TOKEN", ""),
 		ScanInterval: interval,
 	}
