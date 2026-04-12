@@ -66,8 +66,10 @@ func main() {
 		log.Fatalf("run migrations: %v", err)
 	}
 
-	// Initialise Prometheus metrics.
-	m := metrics.NewMetrics(prometheus.DefaultRegisterer)
+	// Initialise Prometheus metrics using a dedicated registry to avoid
+	// duplicate-registration panics with prometheus.DefaultRegisterer.
+	reg := prometheus.NewRegistry()
+	m := metrics.NewMetrics(reg)
 
 	// Build components.
 	var notifier email.Notifier
@@ -101,7 +103,7 @@ func main() {
 	r.Get("/api/confirm/{token}", handler.Confirm)
 	r.Get("/api/unsubscribe/{token}", handler.Unsubscribe)
 	r.With(subscription.APIKeyMiddleware(cfg.APIKey)).Get("/api/subscriptions", handler.ListSubscriptions)
-	r.With(subscription.APIKeyMiddleware(cfg.APIKey)).Handle("/metrics", promhttp.Handler())
+	r.With(subscription.APIKeyMiddleware(cfg.APIKey)).Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 
 	// Start the scanner in the background.
 	scanCtx, cancelScan := context.WithCancel(ctx)
