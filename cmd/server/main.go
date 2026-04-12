@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
 
 	"RepoWatch/db"
 	"RepoWatch/internal/config"
@@ -83,6 +84,13 @@ func main() {
 		notifier = n
 	}
 	githubClient := release.NewGitHubClient(cfg.GitHubToken, "")
+	if cfg.RedisURL != "" {
+		opt, err := redis.ParseURL(cfg.RedisURL)
+		if err != nil {
+			log.Fatalf("parse REDIS_URL: %v", err)
+		}
+		githubClient = release.NewCachedGitHubClient(githubClient, redis.NewClient(opt), 10*time.Minute)
+	}
 	repo := subscription.NewPostgresRepository(pool)
 	svc := subscription.NewService(repo, githubClient, notifier, cfg.Host)
 	svc.SetMetrics(m)

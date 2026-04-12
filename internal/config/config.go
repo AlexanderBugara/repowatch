@@ -19,6 +19,7 @@ type Config struct {
 	APIKey       string
 	GitHubToken  string
 	ScanInterval time.Duration
+	RedisURL     string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -40,6 +41,7 @@ func Load() *Config {
 		APIKey:       getEnv("API_KEY", ""),
 		GitHubToken:  getEnv("GITHUB_TOKEN", ""),
 		ScanInterval: interval,
+		RedisURL:     getEnv("REDIS_URL", ""),
 	}
 }
 
