@@ -1,3 +1,20 @@
+# Live URL
+
+https://repowatch-production.up.railway.app/
+
+# Extra
+
+Deploy API to hosting + HTML subscription page for
+release notifications.
+Redis caching of GitHub API responses with a 10-minute   
+TTL.                                                     
+API key authentication: endpoints protected by a token in
+the header.                                             
+Prometheus metrics — /metrics endpoint with basic service
+indicators.
+GitHub Actions CI pipeline: running linter and tests on
+every push.
+
 # GitHub Release Notifier
 
 A Go service that lets users subscribe their email to GitHub repository release notifications.
